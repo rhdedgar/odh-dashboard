@@ -23,6 +23,7 @@ type LlamaStackDistributionInstallRequest struct {
 type InstallModel struct {
 	ModelName   string `json:"model_name"`
 	IsMaaSModel bool   `json:"is_maas_model"`
+	MaxTokens   *int   `json:"max_tokens,omitempty"` // Optional per-model token limit (128-128000)
 }
 
 // GuardrailModel represents the guardrail model configuration for safety
