@@ -4,11 +4,22 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AIModel, LlamaModel } from '~/app/types';
 import ChatbotConfigurationModal from '~/app/Chatbot/components/chatbotConfiguration/ChatbotConfigurationModal';
-// Mock the table to surface the selectedModels prop for easy assertions
+// Mock the table to surface the selectedModels and maxTokensMap props for easy assertions
 jest.mock('~/app/Chatbot/components/chatbotConfiguration/ChatbotConfigurationTable', () => ({
   __esModule: true,
-  default: ({ selectedModels }: { selectedModels: AIModel[] }) => (
-    <div data-testid="selected-models">{JSON.stringify(selectedModels)}</div>
+  default: ({
+    selectedModels,
+    maxTokensMap,
+  }: {
+    selectedModels: AIModel[];
+    maxTokensMap: Map<string, number | undefined>;
+  }) => (
+    <div data-testid="selected-models">
+      {JSON.stringify({
+        models: selectedModels.map((m) => m.model_name),
+        maxTokens: Array.from(maxTokensMap.entries()),
+      })}
+    </div>
   ),
 }));
 
@@ -50,9 +61,12 @@ const renderModal = (props: {
   );
 
 const getSelectedModelNames = (): string[] => {
-  const json = screen.getByTestId('selected-models').textContent || '[]';
-  const parsed = JSON.parse(json) as AIModel[];
-  return parsed.map((m) => m.model_name);
+  const json = screen.getByTestId('selected-models').textContent || '{}';
+  const parsed = JSON.parse(json) as {
+    models: string[];
+    maxTokens: [string, number | undefined][];
+  };
+  return parsed.models;
 };
 
 describe('ChatbotConfigurationModal preSelectedModels', () => {
@@ -169,5 +183,39 @@ describe('ChatbotConfigurationModal MaaS model support', () => {
 
     expect(parsed[0].isMaaSModel).toBe(true);
     expect(parsed[0].maasModelId).toBe('llama-2-7b-chat');
+  });
+});
+
+describe('ChatbotConfigurationModal max_tokens support', () => {
+  test('max_tokens Map is initialized and passed to table', () => {
+    const allModels = [createAIModel({ model_name: 'test-model' })];
+    renderModal({ allModels });
+
+    const json = screen.getByTestId('selected-models').textContent || '{}';
+    const parsed = JSON.parse(json) as {
+      models: string[];
+      maxTokens: [string, number | undefined][];
+    };
+
+    expect(parsed.maxTokens).toEqual([]);
+    expect(parsed.models).toContain('test-model');
+  });
+
+  test('max_tokens Map structure is correct', () => {
+    const allModels = [
+      createAIModel({ model_name: 'model-a' }),
+      createAIModel({ model_name: 'model-b' }),
+    ];
+    renderModal({ allModels });
+
+    const json = screen.getByTestId('selected-models').textContent || '{}';
+    const parsed = JSON.parse(json) as {
+      models: string[];
+      maxTokens: [string, number | undefined][];
+    };
+
+    // Verify maxTokens is an array (Map entries)
+    expect(Array.isArray(parsed.maxTokens)).toBe(true);
+    expect(parsed.maxTokens.length).toBe(0); // Initially empty
   });
 });

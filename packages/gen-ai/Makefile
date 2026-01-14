@@ -41,7 +41,7 @@ dev-bff-debug: ## Run BFF with Delve debugger (VSCode can attach - requires Delv
 
 .PHONY: dev-frontend
 dev-frontend: ## Run only the frontend in development mode
-	cd frontend && npm run start:dev
+	cd frontend && PORT=9102 npm run start:dev
 
 .PHONY: dev-start-mock
 dev-start-mock: ## Run both frontend and bff in development mode
