@@ -84,12 +84,31 @@ const ChatbotConfigurationModal: React.FC<ChatbotConfigurationModalProps> = ({
   );
 
   const [selectedModels, setSelectedModels] = React.useState<AIModel[]>(availableModels);
+  const [maxTokensMap, setMaxTokensMap] = React.useState<Map<string, number | undefined>>(
+    new Map(),
+  );
 
   const [configuringPlayground, setConfiguringPlayground] = React.useState(false);
   const [error, setError] = React.useState<Error>();
   const [alertTitle, setAlertTitle] = React.useState<string>();
 
   const isUpdate = !!lsdStatus;
+
+  // Handler for max_tokens changes
+  const handleMaxTokensChange = React.useCallback(
+    (modelName: string, value: number | undefined) => {
+      setMaxTokensMap((prev) => {
+        const newMap = new Map(prev);
+        if (value === undefined) {
+          newMap.delete(modelName);
+        } else {
+          newMap.set(modelName, value);
+        }
+        return newMap;
+      });
+    },
+    [],
+  );
 
   const fireErrorEvents = (e: Error) => {
     fireFormTrackingEvent(isUpdate ? UPDATE_PLAYGROUND_EVENT_NAME : SETUP_PLAYGROUND_EVENT_NAME, {
@@ -118,11 +137,15 @@ const ChatbotConfigurationModal: React.FC<ChatbotConfigurationModalProps> = ({
     const install = () => {
       api
         .installLSD({
-          models: selectedModels.map((model) => ({
-            model_name:
-              model.isMaaSModel && model.maasModelId ? model.maasModelId : model.model_name,
-            is_maas_model: model.isMaaSModel || false,
-          })),
+          models: selectedModels.map((model) => {
+            const maxTokens = maxTokensMap.get(model.model_name);
+            return {
+              model_name:
+                model.isMaaSModel && model.maasModelId ? model.maasModelId : model.model_name,
+              is_maas_model: model.isMaaSModel || false,
+              ...(maxTokens !== undefined && { max_tokens: maxTokens }),
+            };
+          }),
         })
         .then(() => {
           fireFormTrackingEvent(
@@ -165,6 +188,7 @@ const ChatbotConfigurationModal: React.FC<ChatbotConfigurationModalProps> = ({
     setConfiguringPlayground(false);
     setError(undefined);
     setAlertTitle(undefined);
+    setMaxTokensMap(new Map()); // Reset max_tokens on close
     fireFormTrackingEvent(isUpdate ? UPDATE_PLAYGROUND_EVENT_NAME : SETUP_PLAYGROUND_EVENT_NAME, {
       outcome: TrackingOutcome.cancel,
       namespace: namespace?.name,
@@ -210,6 +234,8 @@ const ChatbotConfigurationModal: React.FC<ChatbotConfigurationModalProps> = ({
             allModels={allModels}
             selectedModels={selectedModels}
             setSelectedModels={setSelectedModels}
+            maxTokensMap={maxTokensMap}
+            onMaxTokensChange={handleMaxTokensChange}
           />
         )}
       </ModalBody>
